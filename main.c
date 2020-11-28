@@ -23,7 +23,7 @@ int		main(int argc, char **argv)
 		if (res != -1)
 		{
 			printf(res ? "%s\n" : "%s", line);
-			free(line);
+			//free(line);
 		}
 		else
 		{
