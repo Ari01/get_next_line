@@ -6,7 +6,7 @@
 /*   By: user42 <marvin@42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/11/22 17:34:58 by user42            #+#    #+#             */
-/*   Updated: 2020/11/28 20:56:47 by user42           ###   ########.fr       */
+/*   Updated: 2020/11/30 08:21:19 by user42           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,6 +38,8 @@ char	*ft_substr(char const *s, unsigned int start, size_t len)
 	char	*sub;
 	size_t	i;
 
+	if (len + 1 <= 0)
+		len = 0;
 	sub = malloc(sizeof(*sub) * (len + 1));
 	if (!sub)
 		return (NULL);
@@ -55,10 +57,9 @@ char	*ft_substr(char const *s, unsigned int start, size_t len)
 	return (sub);
 }
 
-#include <stdio.h>
 int		read_line(int fd, char **linebuf)
 {
-	char	buf[BUFFER_SIZE];
+	char	buf[BUFFER_SIZE + 1];
 	char	*freeptr;
 	int		read_value;
 
@@ -66,16 +67,12 @@ int		read_line(int fd, char **linebuf)
 	while (read_value > 0)
 	{
 		buf[read_value] = 0;
-		if (*linebuf)
-		{
-			freeptr = *linebuf;
-			*linebuf = ft_strcat_alloc(*linebuf, buf);
-			free(freeptr);
-		}
-		else
-			*linebuf = ft_strdup(buf);
+		freeptr = *linebuf;
+		*linebuf = ft_strcat_alloc(*linebuf, buf);
 		if (!*linebuf)
 			return (-1);
+		free(freeptr);
+		freeptr = NULL;
 		if (ft_strchr(*linebuf, '\n'))
 			return (1);
 		read_value = read(fd, buf, BUFFER_SIZE);
@@ -103,12 +100,11 @@ char	*trim_line(char **linebuf)
 	*linebuf = ft_substr(*linebuf, len, ft_strlen(*linebuf) - len);
 	if (!linebuf)
 	{
-		free(freeptr);
 		free(line);
-		return (NULL);
+		line = NULL;
 	}
-	if (freeptr)
-		free(freeptr);
+	free(freeptr);
+	freeptr = NULL;
 	return (line);
 }
 
@@ -117,8 +113,7 @@ int		get_next_line(int fd, char **line)
 	static char	*linebuf;
 	int			read_value;
 
-	read_value = 0;
-	if (!line)
+	if (!line || BUFFER_SIZE < 0)
 		return (-1);
 	if (!linebuf)
 		linebuf = ft_strdup("");
@@ -130,10 +125,12 @@ int		get_next_line(int fd, char **line)
 	if (ft_strchr(linebuf, '\n'))
 		read_value = 1;
 	*line = trim_line(&linebuf);
-	if (!line)
+	if (!line || !read_value)
 	{
 		free(linebuf);
-		return (-1);
+		linebuf = NULL;
+		if (!line)
+			return (-1);
 	}
 	return (read_value);
 }
