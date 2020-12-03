@@ -6,115 +6,94 @@
 /*   By: dchheang <denis.c1@live.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/03 05:53:43 by dchheang          #+#    #+#             */
-/*   Updated: 2020/12/03 05:55:28 by dchheang         ###   ########.fr       */
+/*   Updated: 2020/12/03 06:48:47 by user42           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "get_next_line.h"
+#include "get_next_line_bonus.h"
 
-char	*ft_strcat_alloc(char const *s1, char const *s2)
+t_list  *ft_lstnew(int fd)
 {
-	char	*cat;
-	size_t	size;
-	size_t	len1;
-	size_t	len2;
+    t_list *new;
 
-	if (!s1 || !s2)
-		return (NULL);
-	len1 = ft_strlen(s1);
-	len2 = ft_strlen(s2);
-	size = len1 + len2 + 1;
-	cat = malloc(sizeof(*cat) * (size));
-	if (!cat)
-		return (NULL);
-	ft_strlcpy(cat, s1, len1 + 1);
-	if (ft_strlcat(cat, s2, size) != len1 + len2)
-		return (NULL);
-	return (cat);
+    new = malloc(sizeof(*new));
+    new->fd = fd;
+    new->linebuf = NULL;
+    new->next = NULL;
+    return (new);
 }
 
-char	*ft_substr(char const *s, unsigned int start, size_t len)
+void    push_front(t_list **fdlist, t_list *new)
 {
-	char	*sub;
-	size_t	i;
-
-	if (len + 1 <= 0)
-		len = 0;
-	sub = malloc(sizeof(*sub) * (len + 1));
-	if (!sub)
-		return (NULL);
-	i = 0;
-	if (s && start < ft_strlen(s))
+	if (new)
 	{
-		while (i < len && s[start])
-		{
-			sub[i] = s[start];
-			start++;
-			i++;
-		}
+		if (*fdlist)
+			new->next = *fdlist;
+		*fdlist = new;
 	}
-	sub[i] = 0;
-	return (sub);
 }
 
-int		read_line(int fd, char **linebuf)
+int     is_in_list(t_list *fdlist, int fd)
 {
-	char	buf[BUFFER_SIZE + 1];
-	char	*freeptr;
-	int		read_value;
-
-	read_value = read(fd, buf, BUFFER_SIZE);
-	while (read_value > 0)
-	{
-		buf[read_value] = 0;
-		freeptr = *linebuf;
-		*linebuf = ft_strcat_alloc(*linebuf, buf);
-		if (!*linebuf)
-			return (-1);
-		free(freeptr);
-		freeptr = NULL;
-		if (ft_strchr(*linebuf, '\n'))
-			return (1);
-		read_value = read(fd, buf, BUFFER_SIZE);
-	}
-	return (read_value);
+    while (fdlist)
+    {
+        if (fdlist->fd == fd)
+            return (1);
+        fdlist = fdlist->next;
+    }
+    return (0);
 }
 
-char	*trim_line(char **linebuf)
+char    *get_linebuf(t_list *fdlist, int fd)
 {
-	char	*freeptr;
-	char	*line;
-	char	*endline;
-	size_t	len;
+    while (fdlist)
+    {
+        if (fdlist->fd == fd)
+            return (fdlist->linebuf);
+        fdlist = fdlist->next;
+    }
+    return (NULL);
+}
 
-	freeptr = *linebuf;
-	endline = ft_strchr(*linebuf, '\n');
-	if (endline)
-		len = endline - *linebuf;
-	else
-		len = ft_strlen(*linebuf);
-	line = ft_substr(*linebuf, 0, len);
-	if (!line)
-		return (NULL);
-	len++;
-	*linebuf = ft_substr(*linebuf, len, ft_strlen(*linebuf) - len);
-	if (!linebuf)
-	{
-		free(line);
-		line = NULL;
-	}
-	free(freeptr);
-	freeptr = NULL;
-	return (line);
+void    ft_lstdelone(t_list **fdlist, int fd)
+{
+    t_list *tmp;
+
+    if (!(*fdlist)->next)
+    {
+        free((*fdlist)->linebuf);
+        free(*fdlist);
+        *fdlist = NULL;
+    }
+    else
+    {
+        while ((*fdlist)->next)
+        {
+            if ((*fdlist)->next->fd == fd)
+            {
+                tmp = (*fdlist)->next;
+                (*fdlist)->next = (*fdlist)->next->next;
+                free(tmp->linebuf);
+                free(tmp);
+                tmp = NULL;
+                break;
+            }
+        }
+    }
 }
 
 int		get_next_line(int fd, char **line)
 {
-	static char	*linebuf;
-	int			read_value;
+	int			    read_value;
+    static t_list   *fdlist;
+    char            *linebuf;
 
 	if (!line || BUFFER_SIZE <= 0)
 		return (-1);
+    if (!is_in_list(fdlist, fd))
+        push_front(&fdlist, ft_lstnew(fd));
+    
+    linebuf = get_linebuf(fdlist, fd);
 	if (!linebuf)
 		linebuf = ft_strdup("");
 	if (!linebuf)
@@ -127,8 +106,7 @@ int		get_next_line(int fd, char **line)
 	*line = trim_line(&linebuf);
 	if (!line || !read_value)
 	{
-		free(linebuf);
-		linebuf = NULL;
+		ft_lstdelone(&fdlist, fd);
 		if (!line)
 			return (-1);
 	}
