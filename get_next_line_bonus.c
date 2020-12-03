@@ -6,7 +6,7 @@
 /*   By: dchheang <denis.c1@live.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/03 05:53:43 by dchheang          #+#    #+#             */
-/*   Updated: 2020/12/03 06:48:47 by user42           ###   ########.fr       */
+/*   Updated: 2020/12/03 07:11:48 by user42           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,12 +44,12 @@ int     is_in_list(t_list *fdlist, int fd)
     return (0);
 }
 
-char    *get_linebuf(t_list *fdlist, int fd)
+char    **get_linebuf(t_list *fdlist, int fd)
 {
     while (fdlist)
     {
         if (fdlist->fd == fd)
-            return (fdlist->linebuf);
+            return (&fdlist->linebuf);
         fdlist = fdlist->next;
     }
     return (NULL);
@@ -86,24 +86,24 @@ int		get_next_line(int fd, char **line)
 {
 	int			    read_value;
     static t_list   *fdlist;
-    char            *linebuf;
+    char            **linebuf;
 
 	if (!line || BUFFER_SIZE <= 0)
 		return (-1);
     if (!is_in_list(fdlist, fd))
         push_front(&fdlist, ft_lstnew(fd));
-    
     linebuf = get_linebuf(fdlist, fd);
-	if (!linebuf)
-		linebuf = ft_strdup("");
-	if (!linebuf)
+
+	if (!*linebuf)
+		*linebuf = ft_strdup("");
+	if (!*linebuf)
 		return (-1);
-	read_value = read_line(fd, &linebuf);
+	read_value = read_line(fd, linebuf);
 	if (read_value < 0)
 		return (-1);
-	if (ft_strchr(linebuf, '\n'))
+	if (ft_strchr(*linebuf, '\n'))
 		read_value = 1;
-	*line = trim_line(&linebuf);
+	*line = trim_line(linebuf);
 	if (!line || !read_value)
 	{
 		ft_lstdelone(&fdlist, fd);
